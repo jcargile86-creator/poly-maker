@@ -1,10 +1,16 @@
 from dotenv import load_dotenv          # Environment variable management
 import os                           # Operating system interface
 
-# Polymarket API client libraries
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams, AssetType, PartialCreateOrderOptions
-from py_clob_client.constants import POLYGON
+# Polymarket API client libraries (V2 — post 2026-04-28 CTF Exchange cutover)
+from py_clob_client_v2.client import ClobClient
+from py_clob_client_v2.clob_types import (
+    OrderArgs,
+    BalanceAllowanceParams,
+    AssetType,
+    PartialCreateOrderOptions,
+    OrderMarketCancelParams,
+)
+from py_clob_client_v2.constants import POLYGON
 
 # Web3 libraries for blockchain interaction
 from web3 import Web3
@@ -16,7 +22,7 @@ import pandas as pd                 # Data analysis
 import json                         # JSON processing
 import subprocess                   # For calling external processes
 
-from py_clob_client.clob_types import OpenOrderParams
+from py_clob_client_v2.clob_types import OpenOrderParams
 
 # Smart contract ABIs
 from poly_data.abis import NegRiskAdapterABI, ConditionalTokenABI, erc20_abi
@@ -65,8 +71,8 @@ class PolymarketClient:
             signature_type=2
         )
 
-        # Set up API credentials
-        self.creds = self.client.create_or_derive_api_creds()
+        # Set up API credentials (V2 renamed create_or_derive_api_creds → create_or_derive_api_key)
+        self.creds = self.client.create_or_derive_api_key()
         self.client.set_api_creds(creds=self.creds)
         
         # Initialize Web3 connection to Polygon
@@ -229,7 +235,8 @@ class PolymarketClient:
         Returns:
             DataFrame: All open orders with their details
         """
-        orders_df = pd.DataFrame(self.client.get_orders())
+        # V2: get_orders → get_open_orders
+        orders_df = pd.DataFrame(self.client.get_open_orders())
 
         # Convert numeric columns to float
         for col in ['original_size', 'size_matched', 'price']:
@@ -237,7 +244,7 @@ class PolymarketClient:
                 orders_df[col] = orders_df[col].astype(float)
 
         return orders_df
-    
+
     def get_market_orders(self, market):
         """
         Get all open orders for a specific market.
@@ -248,7 +255,8 @@ class PolymarketClient:
         Returns:
             DataFrame: Open orders for the specified market
         """
-        orders_df = pd.DataFrame(self.client.get_orders(OpenOrderParams(
+        # V2: get_orders → get_open_orders
+        orders_df = pd.DataFrame(self.client.get_open_orders(OpenOrderParams(
             market=market,
         )))
 
@@ -267,7 +275,8 @@ class PolymarketClient:
         Args:
             asset_id (str): Asset token ID
         """
-        self.client.cancel_market_orders(asset_id=str(asset_id))
+        # V2: cancel_market_orders takes a single OrderMarketCancelParams payload
+        self.client.cancel_market_orders(OrderMarketCancelParams(market="", asset_id=str(asset_id)))
 
 
     
@@ -278,7 +287,8 @@ class PolymarketClient:
         Args:
             marketId (str): Market ID
         """
-        self.client.cancel_market_orders(market=marketId)
+        # V2: cancel_market_orders takes a single OrderMarketCancelParams payload
+        self.client.cancel_market_orders(OrderMarketCancelParams(market=marketId, asset_id=""))
 
     
     def merge_positions(self, amount_to_merge, condition_id, is_neg_risk_market):

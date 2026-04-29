@@ -1,7 +1,7 @@
-from py_clob_client.constants import POLYGON
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams, AssetType
-from py_clob_client.order_builder.constants import BUY
+from py_clob_client_v2.constants import POLYGON
+from py_clob_client_v2.client import ClobClient
+from py_clob_client_v2.clob_types import OrderArgs, BalanceAllowanceParams, AssetType
+from py_clob_client_v2.order_builder.constants import BUY
 
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
@@ -29,7 +29,7 @@ def get_clob_client():
 
     try:
         client = ClobClient(host, key=key, chain_id=chain_id)
-        api_creds = client.create_or_derive_api_creds()
+        api_creds = client.create_or_derive_api_key()
         client.set_api_creds(api_creds)
         return client
     except Exception as ex: 
