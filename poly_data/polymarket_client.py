@@ -56,11 +56,28 @@ class PolymarketClient:
         # Get credentials from environment variables
         key=os.getenv("PK")
         browser_address = os.getenv("BROWSER_ADDRESS")
+        # SIGNATURE_TYPE: 0 = EOA, 1 = POLY_PROXY, 2 = POLY_GNOSIS_SAFE (default), 3 = POLY_1271 (V2)
+        # In EOA mode (0) BROWSER_ADDRESS is optional — funder defaults to the signer's own address.
+        sig_type = int(os.getenv("SIGNATURE_TYPE", "2"))
 
         # Don't print sensitive wallet information
         print("Initializing Polymarket client...")
         chain_id=POLYGON
-        self.browser_wallet=Web3.to_checksum_address(browser_address)
+
+        if sig_type == 0:
+            # EOA-direct: funder = signer's own address (derived from PK if BROWSER_ADDRESS unset)
+            if browser_address:
+                self.browser_wallet = Web3.to_checksum_address(browser_address)
+            else:
+                self.browser_wallet = Web3.to_checksum_address(Account.from_key(key).address)
+        else:
+            # Proxy / Gnosis Safe / 1271: BROWSER_ADDRESS holds the funder smart wallet
+            if not browser_address:
+                raise ValueError(
+                    f"BROWSER_ADDRESS env var is required for SIGNATURE_TYPE={sig_type}. "
+                    "Set SIGNATURE_TYPE=0 to use EOA-direct mode (no proxy wallet)."
+                )
+            self.browser_wallet = Web3.to_checksum_address(browser_address)
 
         # Initialize the Polymarket API client
         self.client = ClobClient(
@@ -68,7 +85,7 @@ class PolymarketClient:
             key=key,
             chain_id=chain_id,
             funder=self.browser_wallet,
-            signature_type=2
+            signature_type=sig_type
         )
 
         # Set up API credentials (V2 renamed create_or_derive_api_creds → create_or_derive_api_key)
